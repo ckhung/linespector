@@ -5,4 +5,25 @@ body {
     line-height: 120%;
 }
 
+h1 { text-align: center; }
+div.navigator {
+    margin-left: 2em;
+    margin-right: 2em;
+    background: #eec;
+}
+div div.left {
+    float: left;
+    background: #cfc;
+}
+div div.right {
+    float: right;
+    background: #cfc;
+}
+div div.middle {
+    margin: 0 auto;
+    width: 80%;
+    text-align: center;
+}
 li { margin:0 20px 20px 0; }
+
+.right { text-align: right; }

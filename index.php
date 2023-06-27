@@ -24,10 +24,23 @@ if (array_key_exists('len', $ARGS)) {
 } else {
     $ARGS['len'] = 7;
 }
-$begin_date = $final_date->modify("-{$ARGS['len']} days");
+$N = $ARGS['len'];
+$begin_date = $final_date->modify("-$N days");
 $day0 = $begin_date->format('Y-m-d');
 $day9 = $final_date->format('Y-m-d');
-echo "<h2>[$day0 => $day9]</h2>";
+$qs_prev = $begin_date->modify("-1 days")->format('ymd');
+$qs_prev = "end=$qs_prev&len=$N";
+$k = $N+1;
+$qs_next = $final_date->modify("+$k days")->format('ymd');
+$qs_next = "end=$qs_next&len=$N";
+$navigator = <<<END
+<div class='navigator'>
+<div class='left'><a href="?$qs_prev">較舊</a></div>
+<div class='right'><a href="?$qs_next">較新</a></div>
+<div class='middle'>[$day0 => $day9]</div>
+</div>
+END;
+echo "$navigator";
 
 $db = new SQLite3($DB_PATH);
 $res = $db->query("select * from messages_with_images where date(time_stamp, 'unixepoch')>='$day0' and date(time_stamp, 'unixepoch')<='$day9'");
@@ -49,6 +62,12 @@ while ($row = $res->fetchArray()) {
     echo "<li>$date $time {$row['msg_type']} {$row['user_name']}<br />\n{$row['msg_content']}<br />\n$img\n";
 }
 echo "</ul>\n";
+
+echo <<<END
+$navigator
+<p class="right"><a href="https://github.com/ckhung/linespector">linespector@github</a>
+by <a href="https://ckhung0.blogspot.com/">資訊.人權.貴</a>
+END;
 ?>
 
 </body>
