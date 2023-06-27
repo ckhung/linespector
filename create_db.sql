@@ -5,7 +5,7 @@ create table messages (
     user_name text,
     prefix text,
     msg_content text,
-    html text,
     img_id text,
+    html text,
     foreign key (img_id) references images(id)
 );

@@ -6,11 +6,12 @@
 # https://cosmocode.io/how-to-connect-selenium-to-an-existing-browser-that-was-opened-manually/
 # ( found from here: https://stackoverflow.com/a/70088095 )
 
+import argparse, os, sqlite3, copy, re, base64, magic
+from warnings import warn
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from bs4 import BeautifulSoup
 from datetime import datetime
-import copy, re, base64, magic
 
 try: G
 except NameError: G = {}
@@ -19,7 +20,7 @@ except NameError: G = {}
 def init():
     global G
     chrome_options = Options()
-    chrome_options.add_experimental_option("debuggerAddress", "127.0.0.1:9222")
+    chrome_options.add_experimental_option('debuggerAddress', '127.0.0.1:'+str(G['args'].port))
     chrome_driver = '/usr/bin/chromedriver'
     G['driver'] = webdriver.Chrome(chrome_driver, options=chrome_options)
     # print(G['driver'].title)
@@ -30,7 +31,7 @@ def init():
         G['all_tabs'][G['driver'].title] = handle
     G['driver'].switch_to.window(G['all_tabs']['LINE'])
 
-def refresh_chat():
+def parse_chat(save=False):
     global G
     page_soup = BeautifulSoup(G['driver'].page_source, 'html.parser')
     # with open('a.htm', 'w') as f: f.write(page_soup.prettify())
@@ -43,13 +44,22 @@ def refresh_chat():
     for msg0 in msg_list:
         msg = copy.copy(msg0) # try to be non-destructive to page_soup
         # msg = msg0 # destructive!
-        item = { 'time_stamp': datetime.fromtimestamp(int(msg['data-timestamp'])//1000) }
+        item = {
+            'time_stamp': int(msg['data-timestamp'])//1000,
+            # 'time_stamp': datetime.fromtimestamp(int(msg['data-timestamp'])//1000)
+            'msg_type': '',
+            'user_name': '*',
+            'prefix': '',
+            'msg_content': '',
+            'img_id': '',
+            'html': '',
+        }
         if 'messageDate-module__date_wrap__I4ily' in msg['class']:
-            item['type'] = '日期'
-            item['text'] = msg['data-message-content']
+            item['msg_type'] = '日期'
+            item['msg_content'] = msg['data-message-content']
         elif 'systemMessage-module__message__yIiOJ' in msg['class']:
-            item['type'] = '系統'
-            item['text'] = msg['data-message-content']
+            item['msg_type'] = '系統'
+            item['msg_content'] = msg['data-message-content']
         elif 'data-message-content-prefix' in msg.attrs:
             item['prefix'] = msg['data-message-content-prefix'].strip()
             to_del = msg.find('span', {'class': 'metaInfo-module__read_count__8-U6j'})
@@ -60,38 +70,40 @@ def refresh_chat():
             if to_del: to_del.replaceWith('')
             to_del = msg.find('pre', {'class': 'username-module__username__vGQGj'})
             if to_del:
-                item['uname'] = to_del.text
+                item['user_name'] = to_del.text
                 to_del.replaceWith('')
-            else:
-                item['uname'] = '*'
             if 'data-message-content' in msg.attrs:
-                item['type'] = msg['data-message-content']
-                item['html'] = msg.prettify()
+                item['msg_type'] = msg['data-message-content']
                 img = msg.find('img')
-                if img:
-                    blob= img['src']
-                    m = re.search(r'/([\w-]{30,})$', blob)
-                    if m is not None:
-                        item['src'] = '{}/{}.jpg'.format(ts2path(item['time_stamp']), m.group(1))
-                        save_blob_as(blob, item['src'])
-                if not 'src' in item: item['src'] = ''
+                if item['msg_type'] in ['圖片', '影片']:
+                    item['msg_content'] = img['src']
+                    item['img_id'] = blob_id(img['src'])
+                elif item['msg_type'] == '貼圖':
+                    item['msg_content'] = img['src']
+                else:
+                    warn(msg['data-timestamp'] + ': ' + item['msg_type'])
+                    item['html'] = msg.prettify()
             else:
-                item['type'] = '文字'
-                item['text'] = msg.text
+                item['msg_type'] = '文字'
+                item['msg_content'] = msg.text
         else:
-            item['type'] = 'unknown'
+            item['msg_type'] = 'unknown'
             item['html'] = msg.prettify()
         parsed_msgs.append(item)
+        if save:
+            if item['img_id'] != '':
+                save_blob_to_sqlite3(G['sqlite3'], item['msg_content'])
+            save_message_to_sqlite3(G['sqlite3'], item)
     return parsed_msgs
 
 def print_parsed(parsed_msgs, last_time_stamp=datetime.fromtimestamp(0)):
     for msg in parsed_msgs:
         if msg['time_stamp'] < last_time_stamp:
             continue
-        if 'uname' in msg:
-            print('{} [{}] {}'.format(msg['time_stamp'].strftime('%H:%M'), msg['uname'], msg['text']))
+        if 'user_name' in msg:
+            print('{} [{}] {}'.format(msg['time_stamp'].strftime('%H:%M'), msg['user_name'], msg['msg_content']))
         else:
-            print('==', msg['text'])
+            print('==', msg['msg_content'])
 
 def ts2path(ts):
     # timestamp to path
@@ -114,26 +126,67 @@ def get_file_content_chrome(driver, uri):
     raise Exception("Request failed with status %s" % result)
   return base64.b64decode(result)
 
-def save_blob_as(blob, filepath):
-    with open(filepath, 'wb') as f:
-        blob_content = get_file_content_chrome(G['driver'], blob)
-        # print(magic.from_buffer(blob_content))
-        # https://github.com/ahupp/python-magic
-        f.write(blob_content)
+def blob_id(blob):
+    m = re.search(r'/([\w-]{36})$', blob)
+    return m.group(1) if m else ''
 
-def save_all_blobs(chat, path):
-    images = chat.find_all('img')
-    for img in images:
-        blob = img['src']
-        m = re.search(r'/([\w-]{30,})$', blob)
-        if m is not None:
-            save_blob_as(blob, '{}/{}.jpg'.format(path, m.group(1)))
+def save_blob_to_sqlite3(sqcon, blob):
+    cursor = sqcon.cursor()
+    cursor.execute(
+        'insert or replace into images (id, content) values (?, ?)',
+        (blob_id(blob), get_file_content_chrome(G['driver'], blob))
+    )
+    sqcon.commit()
+    cursor.close()
+
+def save_message_to_sqlite3(sqcon, item):
+    cursor = sqcon.cursor()
+    cursor.execute(
+        'insert or replace into messages (time_stamp, msg_type, user_name, prefix, msg_content, img_id, html) values (?, ?, ?, ?, ?, ?, ?)',
+        [ item[x] for x in ['time_stamp', 'msg_type', 'user_name', 'prefix', 'msg_content', 'img_id', 'html'] ]
+    )
+    sqcon.commit()
+    cursor.close()
+
+#def save_blob_as_file(filepath, blob):
+#    with open(filepath, 'wb') as f:
+#        blob_content = get_file_content_chrome(G['driver'], blob)
+#        # print(magic.from_buffer(blob_content))
+#        # https://github.com/ahupp/python-magic
+#        f.write(blob_content)
+
+#def save_all_blobs(chat, path):
+#    images = chat.find_all('img')
+#    for img in images:
+#        blob = img['src']
+#        m = re.search(r'/([\w-]{30,})$', blob)
+#        if m is not None:
+#            save_blob_as_file('{}/{}.jpg'.format(path, m.group(1)), blob)
 
 
-'''
-init()
-parsed_msgs = refresh_chat()
-print_parsed(parsed_msgs)
-# After every switch to a new chat:
-save_all_blobs(current_chat[0], '/tmp/linespector')
-'''
+# save_all_blobs(current_chat[0], '/tmp/linespector')
+
+parser = argparse.ArgumentParser(
+    description='line inspector',
+    formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+parser.add_argument('-p', '--port', type=int, default=9222,
+    help='chrome debug port')
+parser.add_argument('-t', '--topdir', type=str,
+    default=os.environ['HOME']+'/linespector',
+    help='chrome debug port')
+parser.add_argument('-m', '--mode', type=str, default='',
+    help='save? parse? or init only?')
+parser.add_argument('dbfile', help='sqlite3 storage file')
+G['args'] = parser.parse_args()
+if not os.path.isabs(G['args'].dbfile):
+    G['args'].dbfile = G['args'].topdir + '/' + G['args'].dbfile
+
+if 'init' in G['args'].mode: init()
+G['sqlite3'] = sqlite3.connect(G['args'].dbfile)
+if 'parse' in G['args'].mode:
+    parsed_msgs = parse_chat( save='save' in G['args'].mode )
+
+# G['sqlite3'].close()
+
+# item['src'] = '{}/{}.jpg'.format(ts2path(item['time_stamp']), m.group(1))
+#                if not 'src' in item: item['src'] = ''
