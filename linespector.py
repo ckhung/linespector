@@ -1,6 +1,16 @@
-# Enter a python3 interpreter. Then do this:
-# exec(open('linespector.py').read())
-# And try, line by line, the commented out code at the end.
+# python3 linespector.py -h
+# mkdir ~/linespector
+# # use sqlite3 to create a db ~/linespector/pubgroup.sqlite3
+# python3 linespector.py ~/linespector/pubgroup.sqlite3
+#
+# To debug:
+# python3 -i linespector.py -m ''
+# Then inside the python3 interpreter:
+# >>> init()
+# >>> parsed_msgs = parse_chat(save=True)
+# After every code update:
+# >>> exec(open('linespector.py').read())
+# >>> parsed_msgs = parse_chat(save=True)
 
 # Wonderful reference:
 # https://cosmocode.io/how-to-connect-selenium-to-an-existing-browser-that-was-opened-manually/
@@ -133,7 +143,7 @@ def blob_id(blob):
 def save_blob_to_sqlite3(sqcon, blob):
     cursor = sqcon.cursor()
     cursor.execute(
-        'insert or replace into images (id, content) values (?, ?)',
+        'insert or replace into images (id, img_content) values (?, ?)',
         (blob_id(blob), get_file_content_chrome(G['driver'], blob))
     )
     sqcon.commit()
@@ -174,7 +184,7 @@ parser.add_argument('-p', '--port', type=int, default=9222,
 parser.add_argument('-t', '--topdir', type=str,
     default=os.environ['HOME']+'/linespector',
     help='chrome debug port')
-parser.add_argument('-m', '--mode', type=str, default='',
+parser.add_argument('-m', '--mode', type=str, default='init+parse+save',
     help='save? parse? or init only?')
 parser.add_argument('dbfile', help='sqlite3 storage file')
 G['args'] = parser.parse_args()

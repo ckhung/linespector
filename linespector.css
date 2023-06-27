@@ -1,0 +1,8 @@
+body {
+    color: #000;
+    background: #ffd;
+    font-size: 120%;
+    line-height: 120%;
+}
+
+li { margin:0 20px 20px 0; }
