@@ -91,10 +91,12 @@ def parse_chat(save=False):
                 elif item['msg_type'] == '貼圖':
                     item['msg_content'] = img['src']
                 else:
-                    warn(msg['data-timestamp'] + ': ' + item['msg_type'])
                     item['html'] = msg.prettify()
             else:
                 item['msg_type'] = '文字'
+                to_del = msg.find('div', {'class': 'replyMessageContent-module__message__0FNkK'})
+                if to_del:
+                    to_del.replaceWith('')
                 item['msg_content'] = msg.text
         else:
             item['msg_type'] = 'unknown'
