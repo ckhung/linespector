@@ -9,7 +9,8 @@ h1 { text-align: center; }
 div.navigator {
     margin-left: 2em;
     margin-right: 2em;
-    background: #eec;
+    padding: 1ex;
+    background: #fff;
 }
 div div.left {
     float: left;

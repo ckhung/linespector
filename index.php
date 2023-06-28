@@ -2,7 +2,7 @@
 
 <head>
 <meta charset="UTF-8" />
-<title>我的某群組 line 聊天紀錄</title>
+<title>我的某 line 群組聊天紀錄</title>
 <link type="text/css" rel="stylesheet" title="user-defined Style" href="linespector.css" />
 </head>
 
@@ -37,12 +37,13 @@ $navigator = <<<END
 <div class='navigator'>
 <div class='left'><a href="?$qs_prev">較舊</a></div>
 <div class='right'><a href="?$qs_next">較新</a></div>
-<div class='middle'>[$day0 => $day9]</div>
+<div class='middle'>[$day0 =&gt; $day9]</div>
 </div>
 END;
 echo "$navigator";
 
-$db = new SQLite3($DB_PATH);
+$db = new SQLite3($DB_PATH, SQLITE3_OPEN_READONLY);
+# see https://www.sqlite.org/c3ref/open.html for SQLITE3_OPEN_READONLY
 $res = $db->query("select * from messages_with_images where date(time_stamp, 'unixepoch')>='$day0' and date(time_stamp, 'unixepoch')<='$day9'");
 echo "<ul>\n";
 while ($row = $res->fetchArray()) {
