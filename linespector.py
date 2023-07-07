@@ -11,6 +11,8 @@
 # After every code update:
 # >>> exec(open('linespector.py').read())
 # >>> parsed_msgs = parse_chat(save=True)
+# pretty print page for debugging:
+# >>> print(G['page_soup'].prettify())
 
 # Wonderful reference:
 # https://cosmocode.io/how-to-connect-selenium-to-an-existing-browser-that-was-opened-manually/
@@ -43,20 +45,30 @@ def init():
 
 def parse_chat(save=False):
     global G
-    page_soup = BeautifulSoup(G['driver'].page_source, 'html.parser')
-    # with open('a.htm', 'w') as f: f.write(page_soup.prettify())
-    all_chats = page_soup.find_all('div', {'class': 'chatlistItem-module__chatlist_item__MOwxh'})
-    current_chat = page_soup.find_all('div', {'class': 'message_list'})
-    assert 1==len(current_chat)
-    msg_list = current_chat[0].find_all('div', {'data-timestamp':True})[::-1]
+    G['page_soup'] = BeautifulSoup(G['driver'].page_source, 'html.parser')
+    with open('a.htm', 'w') as f: f.write(G['page_soup'].prettify())
+    G['all_chats'] = G['page_soup'].find_all('div', {'class': 'chatlistItem-module__chatlist_item__MOwxh'})
+    current_chat_title = G['page_soup'].find('button', {'class': 'chatroomHeader-module__button_name__US7lb'}).text
+    current_chat_content = G['page_soup'].find_all('div', {'class': 'message_list'})
+    match = re.match(r'(.*)\((\d+)\)', current_chat_title)
+    if match:
+        current_chat_title = match.group(1)
+        group_size = match.group(2)
+    else:
+        group_size = 2
+    current_chat_content = G['page_soup'].find_all('div', {'class': 'message_list'})
+    assert 1==len(current_chat_content)
+    msg_list = current_chat_content[0].find_all('div', {'data-timestamp':True})[::-1]
     G['msg_list'] = msg_list
     parsed_msgs = []
     for msg0 in msg_list:
-        msg = copy.copy(msg0) # try to be non-destructive to page_soup
+        msg = copy.copy(msg0) # try to be non-destructive to G['page_soup']
         # msg = msg0 # destructive!
         item = {
             'time_stamp': int(msg['data-timestamp'])//1000,
             # 'time_stamp': datetime.fromtimestamp(int(msg['data-timestamp'])//1000)
+            'chat_title': current_chat_title,
+            'group_size': group_size,
             'msg_type': '',
             'user_name': '*',
             'prefix': '',
@@ -154,8 +166,8 @@ def save_blob_to_sqlite3(sqcon, blob):
 def save_message_to_sqlite3(sqcon, item):
     cursor = sqcon.cursor()
     cursor.execute(
-        'insert or replace into messages (time_stamp, msg_type, user_name, prefix, msg_content, img_id, html) values (?, ?, ?, ?, ?, ?, ?)',
-        [ item[x] for x in ['time_stamp', 'msg_type', 'user_name', 'prefix', 'msg_content', 'img_id', 'html'] ]
+        'insert or replace into messages (time_stamp, chat_title, group_size, msg_type, user_name, prefix, msg_content, img_id, html) values (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [ item[x] for x in ['time_stamp', 'chat_title', 'group_size', 'msg_type', 'user_name', 'prefix', 'msg_content', 'img_id', 'html'] ]
     )
     sqcon.commit()
     cursor.close()
@@ -176,7 +188,7 @@ def save_message_to_sqlite3(sqcon, item):
 #            save_blob_as_file('{}/{}.jpg'.format(path, m.group(1)), blob)
 
 
-# save_all_blobs(current_chat[0], '/tmp/linespector')
+# save_all_blobs(current_chat_content[0], '/tmp/linespector')
 
 parser = argparse.ArgumentParser(
     description='line inspector',
@@ -185,7 +197,7 @@ parser.add_argument('-p', '--port', type=int, default=9222,
     help='chrome debug port')
 parser.add_argument('-t', '--topdir', type=str,
     default=os.environ['HOME']+'/linespector',
-    help='chrome debug port')
+    help='top directory for the db file if its full path is not specified')
 parser.add_argument('-m', '--mode', type=str, default='init+parse+save',
     help='save? parse? or init only?')
 parser.add_argument('dbfile', help='sqlite3 storage file')

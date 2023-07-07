@@ -1,6 +1,8 @@
 create table images (id text primary key, img_content blob);
 create table messages (
     time_stamp int primary key,
+    chat_title text,
+    group_size int,
     msg_type text,
     user_name text,
     prefix text,

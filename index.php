@@ -1,17 +1,18 @@
 <!-- ?end=230623&len=5-->
 
+<?php include "config.php"; ?>
+
 <head>
 <meta charset="UTF-8" />
-<title>我的某 line 群組聊天紀錄</title>
+<title>我的 line 群組聊天紀錄： 「<?= $CHAT_TITLE ?>」</title>
 <link type="text/css" rel="stylesheet" title="user-defined Style" href="linespector.css" />
 </head>
 
 <body>
 
-<h1>我的某 line 群組聊天紀錄</h1>
+<h1>我的 line 群組聊天紀錄： 「<?= $CHAT_TITLE ?>」</h1>
 
 <?php
-include "config.php";
 # echo "$DB_PATH";
 parse_str($_SERVER['QUERY_STRING'], $ARGS);
 if (array_key_exists('end', $ARGS) &&  preg_match('/^(\d\d)(\d\d)(\d\d)/', $ARGS['end'], $matches)) {
@@ -44,7 +45,7 @@ echo "$navigator";
 
 $db = new SQLite3($DB_PATH, SQLITE3_OPEN_READONLY);
 # see https://www.sqlite.org/c3ref/open.html for SQLITE3_OPEN_READONLY
-$res = $db->query("select * from messages_with_images where date(time_stamp, 'unixepoch')>='$day0' and date(time_stamp, 'unixepoch')<='$day9'");
+$res = $db->query("select * from messages_with_images where chat_title='$CHAT_TITLE' and date(time_stamp, 'unixepoch')>='$day0' and date(time_stamp, 'unixepoch')<='$day9'");
 echo "<ul>\n";
 while ($row = $res->fetchArray()) {
     $date = date('m-d', $row['time_stamp']);
