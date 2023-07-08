@@ -1,7 +1,7 @@
 # python3 linespector.py -h
 # mkdir ~/linespector
-# # use sqlite3 to create a db ~/linespector/pubgroup.sqlite3
-# python3 linespector.py ~/linespector/pubgroup.sqlite3
+# # use sqlite3 to create a db ~/linespector/pub_group_chat.sqlite3
+# python3 linespector.py ~/linespector/pub_group_chat.sqlite3
 #
 # To debug:
 # python3 -i linespector.py -m ''
@@ -9,6 +9,7 @@
 # >>> init()
 # >>> parsed_msgs = parse_chat(save=True)
 # After every code update:
+# >>> sys.argv[1:] = ['-m', '', 'pub_group_chat.sqlite3']
 # >>> exec(open('linespector.py').read())
 # >>> parsed_msgs = parse_chat(save=True)
 # pretty print page for debugging:
@@ -18,7 +19,7 @@
 # https://cosmocode.io/how-to-connect-selenium-to-an-existing-browser-that-was-opened-manually/
 # ( found from here: https://stackoverflow.com/a/70088095 )
 
-import argparse, os, sqlite3, copy, re, base64, magic
+import argparse, os, sqlite3, copy, re, base64, magic, sys
 from warnings import warn
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
@@ -46,7 +47,7 @@ def init():
 def parse_chat(save=False):
     global G
     G['page_soup'] = BeautifulSoup(G['driver'].page_source, 'html.parser')
-    with open('a.htm', 'w') as f: f.write(G['page_soup'].prettify())
+    # with open('/tmp/linespector.html', 'w') as f: f.write(G['page_soup'].prettify())
     G['all_chats'] = G['page_soup'].find_all('div', {'class': 'chatlistItem-module__chatlist_item__MOwxh'})
     current_chat_title = G['page_soup'].find('button', {'class': 'chatroomHeader-module__button_name__US7lb'}).text
     current_chat_content = G['page_soup'].find_all('div', {'class': 'message_list'})
@@ -129,10 +130,6 @@ def print_parsed(parsed_msgs, last_time_stamp=datetime.fromtimestamp(0)):
         else:
             print('==', msg['msg_content'])
 
-def ts2path(ts):
-    # timestamp to path
-    return '/tmp/linespector'
-
 # https://stackoverflow.com/a/47425305
 def get_file_content_chrome(driver, uri):
   result = driver.execute_async_script("""
@@ -210,7 +207,5 @@ G['sqlite3'] = sqlite3.connect(G['args'].dbfile)
 if 'parse' in G['args'].mode:
     parsed_msgs = parse_chat( save='save' in G['args'].mode )
 
-# G['sqlite3'].close()
+G['sqlite3'].close()
 
-# item['src'] = '{}/{}.jpg'.format(ts2path(item['time_stamp']), m.group(1))
-#                if not 'src' in item: item['src'] = ''

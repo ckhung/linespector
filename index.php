@@ -45,7 +45,7 @@ echo "$navigator";
 
 $db = new SQLite3($DB_PATH, SQLITE3_OPEN_READONLY);
 # see https://www.sqlite.org/c3ref/open.html for SQLITE3_OPEN_READONLY
-$res = $db->query("select * from messages_with_images where chat_title='$CHAT_TITLE' and date(time_stamp, 'unixepoch')>='$day0' and date(time_stamp, 'unixepoch')<='$day9'");
+$res = $db->query("select * from messages_with_images where chat_title='$CHAT_TITLE' and date(time_stamp, 'unixepoch')>='$day0' and date(time_stamp, 'unixepoch')<='$day9' order by time_stamp asc");
 echo "<ul>\n";
 while ($row = $res->fetchArray()) {
     $date = date('m-d', $row['time_stamp']);
