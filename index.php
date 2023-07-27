@@ -67,6 +67,8 @@ echo "</ul>\n";
 
 echo <<<END
 $navigator
+<p>說明： 本頁面僅顯示文字與靜態圖片的歷史交談記錄； 本頁面無法檢視影片及讀者對每一條訊息的回應。 此外， 本頁面並沒有即時反應所有對話， 而是每隔數日才由管理員手動更新一次。</p>
+
 <p class="right"><a href="https://github.com/ckhung/linespector">linespector@github</a>
 by <a href="https://ckhung0.blogspot.com/">資訊.人權.貴</a>
 END;

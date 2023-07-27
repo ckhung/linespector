@@ -23,6 +23,7 @@ import argparse, os, sqlite3, copy, re, base64, magic, sys
 from warnings import warn
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
 from bs4 import BeautifulSoup
 from datetime import datetime
 
@@ -34,8 +35,8 @@ def init():
     global G
     chrome_options = Options()
     chrome_options.add_experimental_option('debuggerAddress', '127.0.0.1:'+str(G['args'].port))
-    chrome_driver = '/usr/bin/chromedriver'
-    G['driver'] = webdriver.Chrome(chrome_driver, options=chrome_options)
+    service = Service(executable_path='/usr/bin/chromedriver')
+    G['driver'] = webdriver.Chrome(options=chrome_options, service=service)
     # print(G['driver'].title)
     # mime = magic.Magic(mime=True)
     G['all_tabs'] = {}
