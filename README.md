@@ -1,4 +1,7 @@
 # linespector
+
+中文文件： [linespector： 半手動備份 line 文字對話內容與低解析度圖片](https://newtoypia.blogspot.com/2023/08/linespector.html)
+
 This project is for archiving messages of the "line" instant messaging app, which enjoys solid control over Taiwan's society. It contains two pieces of code:
 - linespector.py can be used to save the currently open chat to a sqlite database
 - index.php can be used to display the saved messages from the database
