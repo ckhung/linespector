@@ -21,6 +21,6 @@ My desktop is linuxmint, debian edition. You may need to change the following co
 - Start the line extension for chrome, log in, and switch to the chat you want to save. Then:
   ```python3 linespector.py line-chats.sqlite3```
 - You can do this from sqlite or litecli to verify that the correct messages have been saved:
-  ```select date(time_stamp, 'unixepoch'),chat_title,user_name,msg_type from messages```
+  ```select strftime("%m-%d %H:%M",time_stamp,'unixepoch') as time, chat_title, user_name, msg_type from messages```
 - Edit config.php
 - Visit index.php via apache2 with your browser
