@@ -42,7 +42,11 @@ def init():
     G['all_tabs'] = {}
     for handle in G['driver'].window_handles:
         G['driver'].switch_to.window(handle)
-        G['all_tabs'][G['driver'].title] = handle
+        title = G['driver'].title
+        G['all_tabs'][title] = handle
+        if G['args'].list:
+            print(f'[{title}],', end='')
+    if G['args'].list: print('')
     G['driver'].switch_to.window(G['all_tabs']['LINE'])
 
 def parse_chat(save=False):
@@ -122,12 +126,12 @@ def parse_chat(save=False):
             save_message_to_sqlite3(G['sqlite3'], item)
     return parsed_msgs
 
-def print_parsed(parsed_msgs, last_time_stamp=datetime.fromtimestamp(0)):
+def print_parsed(parsed_msgs, last_time_stamp=0):
     for msg in parsed_msgs:
         if msg['time_stamp'] < last_time_stamp:
             continue
         if 'user_name' in msg:
-            print('{} [{}] {}'.format(msg['time_stamp'].strftime('%H:%M'), msg['user_name'], msg['msg_content']))
+            print('{} [{}] {}'.format(datetime.fromtimestamp(msg['time_stamp']), msg['user_name'], msg['msg_content']))
         else:
             print('==', msg['msg_content'])
 
@@ -191,6 +195,8 @@ def save_message_to_sqlite3(sqcon, item):
 parser = argparse.ArgumentParser(
     description='line inspector',
     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+parser.add_argument('-l', '--list', action='store_true',
+    help='list available chrome tabs')
 parser.add_argument('-p', '--port', type=int, default=9222,
     help='chrome debug port')
 parser.add_argument('-t', '--topdir', type=str,
